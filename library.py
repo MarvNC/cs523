@@ -8,6 +8,8 @@ from sklearn.pipeline import Pipeline
 from sklearn import set_config
 set_config(transform_output="pandas")  #forces built-in transformers to output df
 
+import warnings
+
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class CustomMappingTransformer(BaseEstimator, TransformerMixin):
