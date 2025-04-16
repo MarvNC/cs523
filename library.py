@@ -467,3 +467,77 @@ customer_transformer = Pipeline(steps=[
     # One hot encode ISP
     ('isp', CustomOHETransformer('ISP'))
     ], verbose=True)
+
+class CustomPearsonTransformer(BaseEstimator, TransformerMixin):
+    """
+    A custom scikit-learn transformer that removes highly correlated features
+    based on Pearson correlation.
+
+    Parameters
+    ----------
+    threshold : float
+        The correlation threshold above which features are considered too highly correlated
+        and will be removed.
+
+    Attributes
+    ----------
+    correlated_columns_ : Optional[List[Hashable]]
+        A list of column names (which can be strings, integers, or other hashable types)
+        that are identified as highly correlated and will be removed. This attribute
+        is set after `fit` is called.
+    """
+    def __init__(self, threshold: float):
+        self.threshold = threshold
+        self.correlated_columns_: Optional[List[Hashable]] = None # Initialized during fit
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> Self:
+        """
+        Calculates the Pearson correlation matrix and identifies columns to drop.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data frame.
+        y : Optional[pd.Series], default=None
+            Ignored. Present for compatibility.
+
+        Returns
+        -------
+        Self
+            The fitted transformer instance.
+        """
+        # correlation matrix
+        df_corr = X.corr(method='pearson')
+        # boolean mask
+        masked_df = df_corr.abs() > self.threshold
+        # mask lower triangle including diagonal
+        upper_mask = np.triu(masked_df, k=1)
+        # set correlated columns with any true vals
+        self.correlated_columns_ = [col for i, col in enumerate(X.columns) if upper_mask[:, i].any()]
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Removes the highly correlated columns identified by the `fit` method.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data frame.
+
+        Returns
+        -------
+        pd.DataFrame
+            The data frame with correlated columns removed.
+
+        Raises
+        ------
+        AssertionError
+            If `transform` is called before `fit`.
+        """
+        # Check if fit has been called
+        assert self.correlated_columns_ is not None, "CustomPearsonTransformer.transform called before fit."
+        
+        # Drop the identified columns
+        X_transformed = X.drop(columns=self.correlated_columns_)
+        return X_transformed
