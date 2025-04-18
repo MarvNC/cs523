@@ -541,3 +541,85 @@ class CustomPearsonTransformer(BaseEstimator, TransformerMixin):
         # Drop the identified columns
         X_transformed = X.drop(columns=self.correlated_columns_)
         return X_transformed
+
+class CustomSigma3Transformer(BaseEstimator, TransformerMixin):
+    """
+    A transformer that applies 3-sigma clipping to a specified column in a pandas DataFrame.
+
+    This transformer follows the scikit-learn transformer interface and can be used in
+    a scikit-learn pipeline. It clips values in the target column to be within three standard
+    deviations from the mean.
+
+    Parameters
+    ----------
+    target_column : Hashable
+        The name of the column to apply 3-sigma clipping on.
+
+    Attributes
+    ----------
+    high_wall : Optional[float]
+        The upper bound for clipping, computed as mean + 3 * standard deviation.
+    low_wall : Optional[float]
+        The lower bound for clipping, computed as mean - 3 * standard deviation.
+    """
+    def __init__(self, target_column: Hashable):
+        self.target_column = target_column
+        self.high_wall = None
+        self.low_wall = None
+    
+    def fit(self, X: pd.DataFrame, y: Optional[Iterable] = None) -> Self:
+        """
+        Fits the transformer by calculating the mean and standard deviation of the target column.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input DataFrame.
+        y : array-like, default=None
+            Ignored. Present for compatibility with scikit-learn interface.
+
+        Returns
+        -------
+        self : CustomSigma3Transformer
+            Fitted transformer.
+
+        Raises
+        ------
+        AssertionError
+            If the input DataFrame is not of type pd.DataFrame or if the target column is not in the DataFrame.
+            If the target column is not numeric.
+        """
+        assert isinstance(X, pd.DataFrame), f'expected Dataframe but got {type(X)} instead.'
+        assert self.target_column in X.columns.to_list(), f'unknown column {self.target_column}'
+        assert pd.api.types.is_numeric_dtype(X[self.target_column]), f'expected int or float in column {self.target_column}'
+
+        mean = X[self.target_column].mean()
+        sigma = X[self.target_column].std()
+
+        self.high_wall = mean + 3 * sigma
+        self.low_wall = mean - 3 * sigma
+
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms the input DataFrame by clipping the target column to be within the high and low walls.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input DataFrame to transform.
+
+        Returns
+        -------
+        X : pd.DataFrame
+            The transformed DataFrame with the target column clipped.
+
+        Raises
+        ------
+        AssertionError
+            If the transform method is called before fit.
+        """
+        assert self.high_wall is not None and self.low_wall is not None, "Transformer has not been fitted yet."
+        X[self.target_column] = X[self.target_column].clip(lower=self.low_wall, upper=self.high_wall)
+        return X
