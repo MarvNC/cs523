@@ -811,6 +811,103 @@ class CustomTukeyTransformer(BaseEstimator, TransformerMixin):
         return X_
 
 
+class CustomRobustTransformer(BaseEstimator, TransformerMixin):
+    """Applies robust scaling to a specified column in a pandas DataFrame.
+    This transformer calculates the interquartile range (IQR) and median
+    during the `fit` method and then uses these values to scale the
+    target column in the `transform` method.
+
+    Parameters
+    ----------
+    column : str
+        The name of the column to be scaled.
+
+    Attributes
+    ----------
+    target_column : str
+        The name of the column to be scaled.
+    iqr : float
+        The interquartile range of the target column.
+    med : float
+        The median of the target column.
+    """
+
+    def __init__(self, target_column: str):
+        """Initializes the CustomRobustTransformer.
+
+        Parameters
+        ----------
+        target_column : str
+            The name of the column to apply the robust scaling to.
+        """
+        self.target_column = target_column
+        self.iqr = None
+        self.med = None
+
+    def fit(self, X: pd.DataFrame, y: pd.Series = None) -> Self:
+        """Compute the median and interquartile range for scaling.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input DataFrame containing the target column.
+        y : pd.Series, optional
+            Ignored. Present for compatibility with scikit-learn pipelines.
+
+        Returns
+        -------
+        Self
+            The fitted transformer instance.
+
+        Raises
+        ------
+        TypeError
+            If X is not a pandas DataFrame.
+        ValueError
+            If the target_column is not found in X.
+        """
+
+        assert isinstance(X, pd.DataFrame), "Input must be a pandas DataFrame"
+        assert (
+            self.target_column in X.columns
+        ), f"Unrecognized column: {self.target_column}"
+        self.iqr = X[self.target_column].quantile(0.75) - X[
+            self.target_column
+        ].quantile(0.25)
+        # avoid division by zero
+        if self.iqr == 0:
+            self.iqr = 1
+        self.med = X[self.target_column].median()
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Scale the target column using the computed median and IQR.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input DataFrame to transform.
+
+        Returns
+        -------
+        pd.DataFrame
+            A copy of the input DataFrame with the target column scaled.
+            If the IQR calculated during fit was 0, returns the original
+            DataFrame without scaling the column.
+
+        Raises
+        ------
+        TypeError
+            If the transformer has not been fitted yet (iqr_ is None).
+        """
+        assert (
+            self.iqr is not None
+        ), 'This CustomRobustTransformer instance is not fitted yet. Call "fit" with appropriate arguments before using this estimator.'
+        X_ = X.copy()
+        X_[self.target_column] = (X_[self.target_column] - self.med) / self.iqr
+        return X_
+
+
 from sklearn.pipeline import Pipeline
 
 titanic_transformer = Pipeline(
