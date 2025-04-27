@@ -1,16 +1,32 @@
-from __future__ import annotations  #must be first line in your library!
-import pandas as pd
-import numpy as np
+from __future__ import annotations  # must be first line in your library!
+
 import types
-from typing import Dict, Any, Optional, Union, List, Set, Hashable, Literal, Tuple, Self, Iterable
+from typing import (
+    Any,
+    Dict,
+    Hashable,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Self,
+    Set,
+    Tuple,
+    Union,
+)
+
+import numpy as np
+import pandas as pd
+from sklearn import set_config
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
-from sklearn import set_config
-set_config(transform_output="pandas")  #forces built-in transformers to output df
+
+set_config(transform_output="pandas")  # forces built-in transformers to output df
 
 import warnings
 
 from sklearn.base import BaseEstimator, TransformerMixin
+
 
 class CustomMappingTransformer(BaseEstimator, TransformerMixin):
     """
@@ -51,7 +67,9 @@ class CustomMappingTransformer(BaseEstimator, TransformerMixin):
     3        1
     """
 
-    def __init__(self, mapping_column: Union[str, int], mapping_dict: Dict[Hashable, Any]) -> None:
+    def __init__(
+        self, mapping_column: Union[str, int], mapping_dict: Dict[Hashable, Any]
+    ) -> None:
         """
         Initialize the CustomMappingTransformer.
 
@@ -67,9 +85,11 @@ class CustomMappingTransformer(BaseEstimator, TransformerMixin):
         AssertionError
             If mapping_dict is not a dictionary.
         """
-        assert isinstance(mapping_dict, dict), f'{self.__class__.__name__} constructor expected dictionary but got {type(mapping_dict)} instead.'
+        assert isinstance(
+            mapping_dict, dict
+        ), f"{self.__class__.__name__} constructor expected dictionary but got {type(mapping_dict)} instead."
         self.mapping_dict: Dict[Hashable, Any] = mapping_dict
-        self.mapping_column: Union[str, int] = mapping_column  #column to focus on
+        self.mapping_column: Union[str, int] = mapping_column  # column to focus on
 
     def fit(self, X: pd.DataFrame, y: Optional[Iterable] = None) -> Self:
         """
@@ -91,7 +111,7 @@ class CustomMappingTransformer(BaseEstimator, TransformerMixin):
             Returns self to allow method chaining.
         """
         print(f"\nWarning: {self.__class__.__name__}.fit does nothing.\n")
-        return self  #always the return value of fit
+        return self  # always the return value of fit
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
@@ -118,26 +138,38 @@ class CustomMappingTransformer(BaseEstimator, TransformerMixin):
         1. Keys in mapping_dict are not found in the column values
         2. Values in the column don't have corresponding keys in mapping_dict
         """
-        assert isinstance(X, pd.core.frame.DataFrame), f'{self.__class__.__name__}.transform expected Dataframe but got {type(X)} instead.'
-        assert self.mapping_column in X.columns.to_list(), f'{self.__class__.__name__}.transform unknown column "{self.mapping_column}"'  #column legit?
-        warnings.filterwarnings('ignore', message='.*downcasting.*')  #squash warning in replace method below
+        assert isinstance(
+            X, pd.core.frame.DataFrame
+        ), f"{self.__class__.__name__}.transform expected Dataframe but got {type(X)} instead."
+        assert (
+            self.mapping_column in X.columns.to_list()
+        ), f'{self.__class__.__name__}.transform unknown column "{self.mapping_column}"'  # column legit?
+        warnings.filterwarnings(
+            "ignore", message=".*downcasting.*"
+        )  # squash warning in replace method below
 
-        #now check to see if all keys are contained in column
+        # now check to see if all keys are contained in column
         column_set: Set[Any] = set(X[self.mapping_column].unique())
         keys_not_found: Set[Any] = set(self.mapping_dict.keys()) - column_set
         if keys_not_found:
-            print(f"\nWarning: {self.__class__.__name__}[{self.mapping_column}] does not contain these keys as values {keys_not_found}\n")
+            print(
+                f"\nWarning: {self.__class__.__name__}[{self.mapping_column}] does not contain these keys as values {keys_not_found}\n"
+            )
 
-        #now check to see if some keys are absent
+        # now check to see if some keys are absent
         keys_absent: Set[Any] = column_set - set(self.mapping_dict.keys())
         if keys_absent:
-            print(f"\nWarning: {self.__class__.__name__}[{self.mapping_column}] does not contain keys for these values {keys_absent}\n")
+            print(
+                f"\nWarning: {self.__class__.__name__}[{self.mapping_column}] does not contain keys for these values {keys_absent}\n"
+            )
 
         X_: pd.DataFrame = X.copy()
         X_[self.mapping_column] = X_[self.mapping_column].replace(self.mapping_dict)
         return X_
 
-    def fit_transform(self, X: pd.DataFrame, y: Optional[Iterable] = None) -> pd.DataFrame:
+    def fit_transform(
+        self, X: pd.DataFrame, y: Optional[Iterable] = None
+    ) -> pd.DataFrame:
         """
         Fit to data, then transform it.
 
@@ -155,9 +187,10 @@ class CustomMappingTransformer(BaseEstimator, TransformerMixin):
         pandas.DataFrame
             A copy of the input DataFrame with mapping applied to the specified column.
         """
-        #self.fit(X,y)  #commented out to avoid warning message in fit
+        # self.fit(X,y)  #commented out to avoid warning message in fit
         result: pd.DataFrame = self.transform(X)
         return result
+
 
 class CustomOHETransformer(BaseEstimator, TransformerMixin):
     """
@@ -199,7 +232,12 @@ class CustomOHETransformer(BaseEstimator, TransformerMixin):
     3           1           0           0
     """
 
-    def __init__(self, target_column: Union[str, int], dummy_na: bool = False, drop_first: bool = False) -> None:
+    def __init__(
+        self,
+        target_column: Union[str, int],
+        dummy_na: bool = False,
+        drop_first: bool = False,
+    ) -> None:
         """
         Initialize the CustomOHETransformer.
 
@@ -258,21 +296,27 @@ class CustomOHETransformer(BaseEstimator, TransformerMixin):
         AssertionError
             If X is not a pandas DataFrame or if target_column is not in X.
         """
-        assert isinstance(X, pd.core.frame.DataFrame), f'{self.__class__.__name__}.transform expected Dataframe but got {type(X)} instead.'
-        assert self.target_column in X.columns.to_list(), f'{self.__class__.__name__}.transform unknown column "{self.target_column}"'
+        assert isinstance(
+            X, pd.core.frame.DataFrame
+        ), f"{self.__class__.__name__}.transform expected Dataframe but got {type(X)} instead."
+        assert (
+            self.target_column in X.columns.to_list()
+        ), f'{self.__class__.__name__}.transform unknown column "{self.target_column}"'
 
         X_ = pd.get_dummies(
             X,
             prefix=self.target_column,
-            prefix_sep='_',
+            prefix_sep="_",
             columns=[self.target_column],
             dummy_na=self.dummy_na,
             drop_first=self.drop_first,
-            dtype=int
+            dtype=int,
         )
         return X_
 
-    def fit_transform(self, X: pd.DataFrame, y: Optional[Iterable] = None) -> pd.DataFrame:
+    def fit_transform(
+        self, X: pd.DataFrame, y: Optional[Iterable] = None
+    ) -> pd.DataFrame:
         """
         Fit to data, then transform it.
 
@@ -295,7 +339,9 @@ class CustomOHETransformer(BaseEstimator, TransformerMixin):
         result: pd.DataFrame = self.transform(X)
         return result
 
+
 from typing import Literal
+
 
 class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
     """
@@ -339,7 +385,9 @@ class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
     ['A', 'C']
     """
 
-    def __init__(self, column_list: List[str], action: Literal['drop', 'keep'] = 'drop') -> None:
+    def __init__(
+        self, column_list: List[str], action: Literal["drop", "keep"] = "drop"
+    ) -> None:
         """
         Initialize the CustomDropColumnsTransformer.
 
@@ -356,12 +404,17 @@ class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
         AssertionError
             If action is not 'drop' or 'keep', or if column_list is not a list.
         """
-        assert action in ['keep', 'drop'], f'DropColumnsTransformer action {action} not in ["keep", "drop"]'
-        assert isinstance(column_list, list), f'DropColumnsTransformer expected list but saw {type(column_list)}'
+        assert action in [
+            "keep",
+            "drop",
+        ], f'DropColumnsTransformer action {action} not in ["keep", "drop"]'
+        assert isinstance(
+            column_list, list
+        ), f"DropColumnsTransformer expected list but saw {type(column_list)}"
         self.column_list: List[str] = column_list
-        self.action: Literal['drop', 'keep'] = action
+        self.action: Literal["drop", "keep"] = action
 
-    #your code below
+    # your code below
 
     def fit(self, X: pd.DataFrame, y: Optional[Iterable] = None) -> Self:
         """
@@ -383,7 +436,7 @@ class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
             Returns self to allow method chaining.
         """
         print(f"\nWarning: {self.__class__.__name__}.fit does nothing.\n")
-        return self  #always the return value of fit
+        return self  # always the return value of fit
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
@@ -406,17 +459,24 @@ class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
         KeyError
             If any column in `column_list` is not found in the input DataFrame.
         """
-        assert isinstance(X, pd.DataFrame), f"{self.__class__.__name__}.transform expected DataFrame but got {type(X)} instead."
+        assert isinstance(
+            X, pd.DataFrame
+        ), f"{self.__class__.__name__}.transform expected DataFrame but got {type(X)} instead."
 
         X_ = X.copy()  # Make a copy of the DataFrame to avoid modifying the original
 
-
-        if self.action == 'drop':
+        if self.action == "drop":
             unknown_columns = [col for col in self.column_list if col not in X_.columns]
             if unknown_columns:
-                warnings.warn(f"Columns {unknown_columns} not found in DataFrame and will be ignored.", UserWarning)
-            X_ = X_.drop(columns=[col for col in self.column_list if col in X_.columns], errors='ignore')  # errors='ignore' to suppress KeyError
-        elif self.action == 'keep':
+                warnings.warn(
+                    f"Columns {unknown_columns} not found in DataFrame and will be ignored.",
+                    UserWarning,
+                )
+            X_ = X_.drop(
+                columns=[col for col in self.column_list if col in X_.columns],
+                errors="ignore",
+            )  # errors='ignore' to suppress KeyError
+        elif self.action == "keep":
             try:
                 X_ = X_[self.column_list]
             except KeyError as e:
@@ -442,9 +502,10 @@ class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
         pandas.DataFrame
             A copy of the input DataFrame with mapping applied to the specified column.
         """
-        #self.fit(X,y)
+        # self.fit(X,y)
         result = self.transform(X)
         return result
+
 
 class CustomPearsonTransformer(BaseEstimator, TransformerMixin):
     """
@@ -464,9 +525,12 @@ class CustomPearsonTransformer(BaseEstimator, TransformerMixin):
         that are identified as highly correlated and will be removed. This attribute
         is set after `fit` is called.
     """
+
     def __init__(self, threshold: float):
         self.threshold = threshold
-        self.correlated_columns_: Optional[List[Hashable]] = None # Initialized during fit
+        self.correlated_columns_: Optional[List[Hashable]] = (
+            None  # Initialized during fit
+        )
 
     def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> Self:
         """
@@ -485,13 +549,15 @@ class CustomPearsonTransformer(BaseEstimator, TransformerMixin):
             The fitted transformer instance.
         """
         # correlation matrix
-        df_corr = X.corr(method='pearson')
+        df_corr = X.corr(method="pearson")
         # boolean mask
         masked_df = df_corr.abs() > self.threshold
         # mask lower triangle including diagonal
         upper_mask = np.triu(masked_df, k=1)
         # set correlated columns with any true vals
-        self.correlated_columns_ = [col for i, col in enumerate(X.columns) if upper_mask[:, i].any()]
+        self.correlated_columns_ = [
+            col for i, col in enumerate(X.columns) if upper_mask[:, i].any()
+        ]
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -514,11 +580,14 @@ class CustomPearsonTransformer(BaseEstimator, TransformerMixin):
             If `transform` is called before `fit`.
         """
         # Check if fit has been called
-        assert self.correlated_columns_ is not None, "CustomPearsonTransformer.transform called before fit."
-        
+        assert (
+            self.correlated_columns_ is not None
+        ), "CustomPearsonTransformer.transform called before fit."
+
         # Drop the identified columns
         X_transformed = X.drop(columns=self.correlated_columns_)
         return X_transformed
+
 
 class CustomSigma3Transformer(BaseEstimator, TransformerMixin):
     """
@@ -540,11 +609,12 @@ class CustomSigma3Transformer(BaseEstimator, TransformerMixin):
     low_wall : Optional[float]
         The lower bound for clipping, computed as mean - 3 * standard deviation.
     """
+
     def __init__(self, target_column: Hashable):
         self.target_column = target_column
         self.high_wall = None
         self.low_wall = None
-    
+
     def fit(self, X: pd.DataFrame, y: Optional[Iterable] = None) -> Self:
         """
         Fits the transformer by calculating the mean and standard deviation of the target column.
@@ -567,9 +637,15 @@ class CustomSigma3Transformer(BaseEstimator, TransformerMixin):
             If the input DataFrame is not of type pd.DataFrame or if the target column is not in the DataFrame.
             If the target column is not numeric.
         """
-        assert isinstance(X, pd.DataFrame), f'expected Dataframe but got {type(X)} instead.'
-        assert self.target_column in X.columns.to_list(), f'unknown column {self.target_column}'
-        assert pd.api.types.is_numeric_dtype(X[self.target_column]), f'expected int or float in column {self.target_column}'
+        assert isinstance(
+            X, pd.DataFrame
+        ), f"expected Dataframe but got {type(X)} instead."
+        assert (
+            self.target_column in X.columns.to_list()
+        ), f"unknown column {self.target_column}"
+        assert pd.api.types.is_numeric_dtype(
+            X[self.target_column]
+        ), f"expected int or float in column {self.target_column}"
 
         mean = X[self.target_column].mean()
         sigma = X[self.target_column].std()
@@ -598,9 +674,14 @@ class CustomSigma3Transformer(BaseEstimator, TransformerMixin):
         AssertionError
             If the transform method is called before fit.
         """
-        assert self.high_wall is not None and self.low_wall is not None, "Transformer has not been fitted yet."
-        X[self.target_column] = X[self.target_column].clip(lower=self.low_wall, upper=self.high_wall)
+        assert (
+            self.high_wall is not None and self.low_wall is not None
+        ), "Transformer has not been fitted yet."
+        X[self.target_column] = X[self.target_column].clip(
+            lower=self.low_wall, upper=self.high_wall
+        )
         return X
+
 
 class CustomTukeyTransformer(BaseEstimator, TransformerMixin):
     """
@@ -635,7 +716,10 @@ class CustomTukeyTransformer(BaseEstimator, TransformerMixin):
     >>> transformed_df = tukey_transformer.fit_transform(df)
     >>> transformed_df
     """
-    def __init__(self, target_column: Hashable, fence: Literal['inner', 'outer'] = 'outer'):
+
+    def __init__(
+        self, target_column: Hashable, fence: Literal["inner", "outer"] = "outer"
+    ):
         self.target_column = target_column
         self.fence = fence
         self.inner_low = None
@@ -665,9 +749,15 @@ class CustomTukeyTransformer(BaseEstimator, TransformerMixin):
             If the input DataFrame is not of type pd.DataFrame or if the target column is not in the DataFrame.
             If the target column is not numeric.
         """
-        assert isinstance(X, pd.DataFrame), f'expected Dataframe but got {type(X)} instead.'
-        assert self.target_column in X.columns.to_list(), f'unknown column {self.target_column}'
-        assert pd.api.types.is_numeric_dtype(X[self.target_column]), f'expected int or float in column {self.target_column}'
+        assert isinstance(
+            X, pd.DataFrame
+        ), f"expected Dataframe but got {type(X)} instead."
+        assert (
+            self.target_column in X.columns.to_list()
+        ), f"unknown column {self.target_column}"
+        assert pd.api.types.is_numeric_dtype(
+            X[self.target_column]
+        ), f"expected int or float in column {self.target_column}"
 
         q1 = X[self.target_column].quantile(0.25)
         q3 = X[self.target_column].quantile(0.75)
@@ -678,6 +768,7 @@ class CustomTukeyTransformer(BaseEstimator, TransformerMixin):
         self.inner_high = q3 + 1.5 * iqr
         self.outer_high = q3 + 3.0 * iqr
         return self
+
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         """
         Transforms the input DataFrame by clipping the target column based on the specified fence.
@@ -698,42 +789,62 @@ class CustomTukeyTransformer(BaseEstimator, TransformerMixin):
             If the transform method is called before fit.
             If the fence type specified during initialization is invalid.
         """
-        assert self.inner_low is not None and self.inner_high is not None and \
-               self.outer_low is not None and self.outer_high is not None, \
-               "TukeyTransformer.fit has not been called."
+        assert (
+            self.inner_low is not None
+            and self.inner_high is not None
+            and self.outer_low is not None
+            and self.outer_high is not None
+        ), "TukeyTransformer.fit has not been called."
 
         X_ = X.copy()
 
-        if self.fence == 'inner':
+        if self.fence == "inner":
             lower_bound = self.inner_low
             upper_bound = self.inner_high
-        elif self.fence == 'outer':
+        elif self.fence == "outer":
             lower_bound = self.outer_low
             upper_bound = self.outer_high
 
-        X_[self.target_column] = X_[self.target_column].clip(lower=lower_bound, upper=upper_bound)
+        X_[self.target_column] = X_[self.target_column].clip(
+            lower=lower_bound, upper=upper_bound
+        )
         return X_
+
 
 from sklearn.pipeline import Pipeline
 
-titanic_transformer = Pipeline(steps=[
-    ('gender', CustomMappingTransformer('Gender', {'Male': 0, 'Female': 1})),
-    ('class', CustomMappingTransformer('Class', {'Crew': 0, 'C3': 1, 'C2': 2, 'C1': 3})),
-    ('joined', CustomOHETransformer(target_column='Joined')),
-    ('fare', CustomTukeyTransformer(target_column='Fare', fence='outer')),
-    ], verbose=True)
+titanic_transformer = Pipeline(
+    steps=[
+        ("gender", CustomMappingTransformer("Gender", {"Male": 0, "Female": 1})),
+        (
+            "class",
+            CustomMappingTransformer("Class", {"Crew": 0, "C3": 1, "C2": 2, "C1": 3}),
+        ),
+        ("joined", CustomOHETransformer(target_column="Joined")),
+        ("fare", CustomTukeyTransformer(target_column="Fare", fence="outer")),
+    ],
+    verbose=True,
+)
 
-customer_transformer = Pipeline(steps=[
-    #fill in the steps on your own
-    # Drop ID
-    ('drop', CustomDropColumnsTransformer(['ID'], 'drop')),
-    # Map gender
-    ('gender', CustomMappingTransformer('Gender', {'Male': 0, 'Female': 1})),
-    # Map experience level
-    ('experience_level', CustomMappingTransformer('Experience Level', {'low': 0, 'medium': 1, 'high': 2})),
-    # One hot encode OS
-    ('os', CustomOHETransformer('OS')),
-    # One hot encode ISP
-    ('isp', CustomOHETransformer('ISP')),
-    ('time spent', CustomTukeyTransformer('Time Spent', 'inner')),
-    ], verbose=True)
+customer_transformer = Pipeline(
+    steps=[
+        # fill in the steps on your own
+        # Drop ID
+        ("drop", CustomDropColumnsTransformer(["ID"], "drop")),
+        # Map gender
+        ("gender", CustomMappingTransformer("Gender", {"Male": 0, "Female": 1})),
+        # Map experience level
+        (
+            "experience_level",
+            CustomMappingTransformer(
+                "Experience Level", {"low": 0, "medium": 1, "high": 2}
+            ),
+        ),
+        # One hot encode OS
+        ("os", CustomOHETransformer("OS")),
+        # One hot encode ISP
+        ("isp", CustomOHETransformer("ISP")),
+        ("time spent", CustomTukeyTransformer("Time Spent", "inner")),
+    ],
+    verbose=True,
+)
