@@ -908,6 +908,17 @@ class CustomRobustTransformer(BaseEstimator, TransformerMixin):
         return X_
 
 
+from typing import Annotated
+
+PositiveInta = Annotated[int, lambda x: x > 0]
+
+from annotated_types import Gt
+
+PositiveIntb = Annotated[int, Gt(0)]
+
+from sklearn.impute import KNNImputer
+
+
 class CustomKNNTransformer(BaseEstimator, TransformerMixin):
     """Imputes missing values using K-Nearest Neighbors.
 
