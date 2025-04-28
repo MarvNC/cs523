@@ -908,21 +908,177 @@ class CustomRobustTransformer(BaseEstimator, TransformerMixin):
         return X_
 
 
+class CustomKNNTransformer(BaseEstimator, TransformerMixin):
+    """Imputes missing values using K-Nearest Neighbors.
+
+    This transformer wraps the KNNImputer from scikit-learn, ensuring that
+    the `add_indicator` parameter is always set to False. It operates on and
+    returns pandas DataFrames.
+
+    Parameters
+    ----------
+    n_neighbors : PositiveIntb, default=5
+        Number of neighboring samples to use for imputation. Must be a positive integer.
+    weights : Literal["uniform", "distance"], default='uniform'
+        Weight function used in prediction. Possible values:
+        - 'uniform': All points in each neighborhood are weighted equally.
+        - 'distance': Weight points by the inverse of their distance. Closer
+          neighbors of a query point will have a greater influence than
+          neighbors which are further away.
+
+    Attributes
+    ----------
+    n_neighbors : int
+        The number of neighbors used for imputation.
+    weights : str
+        The weight function used ('uniform' or 'distance').
+    KNNImputer : KNNImputer
+        The underlying scikit-learn KNNImputer instance.
+    fitted : bool
+        A flag indicating whether the transformer has been fitted.
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from sklearn import set_config
+    >>> set_config(transform_output="pandas") # Ensure pandas output
+    >>> data = [[1, 2, np.nan], [3, np.nan, 6], [np.nan, 8, 9], [10, 11, 12]]
+    >>> df = pd.DataFrame(data, columns=['a', 'b', 'c'])
+    >>> imputer = CustomKNNTransformer(n_neighbors=2)
+    >>> imputed_df = imputer.fit_transform(df)
+    >>> imputed_df
+         a    b     c
+    0  1.0  2.0   7.5
+    1  3.0  5.0   6.0
+    2  6.5  8.0   9.0
+    3 10.0 11.0  12.0
+    """
+
+    def __init__(
+        self,
+        n_neighbors: PositiveIntb = 5,
+        weights: Literal["uniform", "distance"] = "uniform",
+    ) -> None:
+        """Initialize the CustomKNNTransformer.
+
+        Parameters
+        ----------
+        n_neighbors : PositiveIntb, default=5
+            Number of neighboring samples to use for imputation. Must be a positive integer.
+        weights : Literal["uniform", "distance"], default='uniform'
+            Weight function used in prediction.
+
+        Raises
+        ------
+        ValueError
+            If n_neighbors is not a positive integer.
+        """
+        if not isinstance(n_neighbors, int) or n_neighbors <= 0:
+            raise ValueError("n_neighbors must be a positive integer.")
+
+        self.n_neighbors = n_neighbors
+        self.weights = weights
+        # Instantiate the underlying KNNImputer, hardcoding add_indicator=False
+        self.KNNImputer = KNNImputer(
+            n_neighbors=n_neighbors, weights=weights, add_indicator=False
+        )
+        self.fitted = False  # Flag to track if fit has been called
+
+    def fit(self, X: pd.DataFrame, y: Optional[pd.Series] = None) -> Self:
+        """Fit the imputer on the provided data.
+
+        This method trains the underlying KNNImputer model. It checks if the
+        number of neighbors is feasible given the number of samples and stores
+        internal state.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data to fit the imputer on. Missing values (NaN) are allowed.
+        y : Optional[pd.Series], default=None
+            Ignored. Present for compatibility with scikit-learn pipelines.
+
+        Returns
+        -------
+        Self
+            The fitted transformer instance.
+
+        Raises
+        ------
+        AssertionError
+            If X is not a pandas DataFrame.
+
+        Warns
+        -----
+        UserWarning
+            If `n_neighbors` is greater than the number of samples in X.
+        """
+        assert isinstance(X, pd.DataFrame), "Input must be a pandas dataframe."
+        # Warn if n_neighbors is larger than the number of samples
+        if self.n_neighbors > len(X):
+            warnings.warn(
+                f"n_neighbors ({self.n_neighbors}) is greater than the number of samples ({len(X)}). "
+                f"Using {len(X)} neighbors instead.",
+                UserWarning,
+            )
+        # Fit the underlying KNNImputer
+        self.KNNImputer.fit(X)
+        self.fitted = True  # Mark as fitted
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        """Impute all missing values in X.
+
+        The imputation is done using the model fitted during the `fit` step.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            The input data frame with missing values to impute.
+
+        Returns
+        -------
+        pd.DataFrame
+            The DataFrame with missing values imputed. The output is always a
+            pandas DataFrame due to `set_config(transform_output="pandas")`.
+
+        Raises
+        ------
+        AssertionError
+            If `transform` is called before `fit`.
+            If the column names or number of columns in X do not match the
+            data seen during `fit`.
+        """
+        # Check if the transformer has been fitted
+        assert (
+            self.fitted
+        ), 'NotFittedError: This CustomKNNTransformer instance is not fitted yet. Call "fit" with appropriate arguments before using this estimator.'
+
+        # Transform the data using the fitted KNNImputer
+        # The output will be a DataFrame because set_config(transform_output="pandas") was called
+        X_transformed = self.KNNImputer.transform(X)
+        return X_transformed
+
+
 from sklearn.pipeline import Pipeline
 
 titanic_transformer = Pipeline(
     steps=[
-        ("gender", CustomMappingTransformer("Gender", {"Male": 0, "Female": 1})),
+        ("gender Map", CustomMappingTransformer("Gender", {"Male": 0, "Female": 1})),
         (
-            "class",
+            "class Map",
             CustomMappingTransformer("Class", {"Crew": 0, "C3": 1, "C2": 2, "C1": 3}),
         ),
-        ("joined", CustomOHETransformer(target_column="Joined")),
-        ("fare", CustomTukeyTransformer(target_column="Fare", fence="outer")),
+        ("joined OHET", CustomOHETransformer(target_column="Joined")),
+        ("fare Tukey", CustomTukeyTransformer(target_column="Fare", fence="outer")),
+        ("Age robust", CustomRobustTransformer(target_column="Age")),
+        ("Fare robust", CustomRobustTransformer(target_column="Fare")),
     ],
     verbose=True,
 )
 
+# Build pipeline and include scalers from last chapter and imputer from this
 customer_transformer = Pipeline(
     steps=[
         # fill in the steps on your own
@@ -942,6 +1098,9 @@ customer_transformer = Pipeline(
         # One hot encode ISP
         ("isp", CustomOHETransformer("ISP")),
         ("time spent", CustomTukeyTransformer("Time Spent", "inner")),
+        ("robust scaler time spent", CustomRobustTransformer("Time Spent")),
+        ("robust scaler age", CustomRobustTransformer("Age")),
+        ("KNNTransformer", CustomKNNTransformer()),
     ],
     verbose=True,
 )
