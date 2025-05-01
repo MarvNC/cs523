@@ -1,7 +1,9 @@
 from __future__ import annotations  # must be first line in your library!
 
 import types
+import warnings
 from typing import (
+    Annotated,
     Any,
     Dict,
     Hashable,
@@ -17,15 +19,13 @@ from typing import (
 
 import numpy as np
 import pandas as pd
+from annotated_types import Gt
 from sklearn import set_config
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.impute import KNNImputer
 from sklearn.pipeline import Pipeline
 
 set_config(transform_output="pandas")  # forces built-in transformers to output df
-
-import warnings
-
-from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class CustomMappingTransformer(BaseEstimator, TransformerMixin):
@@ -338,9 +338,6 @@ class CustomOHETransformer(BaseEstimator, TransformerMixin):
         # self.fit(X, y)
         result: pd.DataFrame = self.transform(X)
         return result
-
-
-from typing import Literal
 
 
 class CustomDropColumnsTransformer(BaseEstimator, TransformerMixin):
@@ -908,15 +905,10 @@ class CustomRobustTransformer(BaseEstimator, TransformerMixin):
         return X_
 
 
-from typing import Annotated
-
 PositiveInta = Annotated[int, lambda x: x > 0]
 
-from annotated_types import Gt
 
 PositiveIntb = Annotated[int, Gt(0)]
-
-from sklearn.impute import KNNImputer
 
 
 class CustomKNNTransformer(BaseEstimator, TransformerMixin):
