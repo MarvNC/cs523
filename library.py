@@ -1265,10 +1265,7 @@ titanic_transformer = Pipeline(
             "map_class",
             CustomMappingTransformer("Class", {"Crew": 0, "C3": 1, "C2": 2, "C1": 3}),
         ),
-        (
-            "target_joined",
-            CustomTargetTransformer(col="Joined", smoothing=10),
-        ),  # swapped this in
+        ("target_joined", CustomTargetTransformer(col="Joined", smoothing=10)),
         ("tukey_age", CustomTukeyTransformer(target_column="Age", fence="outer")),
         ("tukey_fare", CustomTukeyTransformer(target_column="Fare", fence="outer")),
         ("scale_age", CustomRobustTransformer(target_column="Age")),
@@ -1286,26 +1283,26 @@ titanic_transformer = Pipeline(
 # Build pipeline and include scalers from last chapter and imputer from this
 customer_transformer = Pipeline(
     steps=[
-        # fill in the steps on your own
-        # Drop ID
-        ("drop", CustomDropColumnsTransformer(["ID"], "drop")),
-        # Map gender
-        ("gender", CustomMappingTransformer("Gender", {"Male": 0, "Female": 1})),
-        # Map experience level
+        ("map_os", CustomMappingTransformer("OS", {"Android": 0, "iOS": 1})),
+        ("target_isp", CustomTargetTransformer(col="ISP")),
         (
-            "experience_level",
+            "map_level",
             CustomMappingTransformer(
                 "Experience Level", {"low": 0, "medium": 1, "high": 2}
             ),
         ),
-        # One hot encode OS
-        ("os", CustomTargetTransformer("OS")),
-        # One hot encode ISP
-        ("isp", CustomTargetTransformer("ISP")),
-        ("time spent", CustomTukeyTransformer("Time Spent", "inner")),
-        ("robust scaler time spent", CustomRobustTransformer("Time Spent")),
-        ("robust scaler age", CustomRobustTransformer("Age")),
-        ("KNNTransformer", CustomKNNTransformer()),
+        ("map_gender", CustomMappingTransformer("Gender", {"Male": 0, "Female": 1})),
+        ("tukey_age", CustomTukeyTransformer("Age", "inner")),  # from chapter 4
+        (
+            "tukey_time spent",
+            CustomTukeyTransformer("Time Spent", "inner"),
+        ),  # from chapter 4
+        ("scale_age", CustomRobustTransformer(target_column="Age")),  # from 5
+        (
+            "scale_time spent",
+            CustomRobustTransformer(target_column="Time Spent"),
+        ),  # from 5
+        ("impute", CustomKNNTransformer(n_neighbors=5)),
         (
             "passthrough",
             FunctionTransformer(validate=False),
@@ -1313,3 +1310,6 @@ customer_transformer = Pipeline(
     ],
     verbose=True,
 )
+
+titanic_variance_based_split = 107
+customer_variance_based_split = 113
