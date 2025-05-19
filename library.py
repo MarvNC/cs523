@@ -22,6 +22,7 @@ import pandas as pd
 from annotated_types import Gt
 from sklearn import set_config
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.experimental import enable_halving_search_cv
 from sklearn.impute import KNNImputer
 from sklearn.metrics import (
     accuracy_score,
