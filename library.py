@@ -32,7 +32,7 @@ from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import HalvingGridSearchCV, ParameterGrid, train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -1392,3 +1392,35 @@ def threshold_results(thresh_list, actuals, predicted):
         .set_table_styles([headers])
     )
     return (result_df, fancy_df)
+
+
+def halving_search(
+    model, grid, x_train, y_train, factor=2, min_resources="exhaust", scoring="roc_auc"
+):
+    halving_cv = HalvingGridSearchCV(
+        model,
+        grid,  # our model and the parameter combos we want to try
+        scoring=scoring,  # from chapter 10
+        n_jobs=-1,  # use all available cpus
+        min_resources=min_resources,  # "exhaust" sets this to 20, which is non-optimal. Possible bug in algorithm. See https://github.com/scikit-learn/scikit-learn/issues/27422.
+        factor=factor,  # double samples and take top half of combos on each iteration
+        cv=5,
+        random_state=1234,
+        refit=True,  # remembers the best combo and gives us back that model already trained and ready for testing
+    )
+    return halving_cv.fit(x_train, y_train)
+
+
+def sort_grid(grid):
+    sorted_grid = grid.copy()
+
+    # sort values - note that this will expand range for you
+    for k, v in sorted_grid.items():
+        sorted_grid[k] = sorted(
+            sorted_grid[k], key=lambda x: (x is None, x)
+        )  # handles cases where None is an alternative value
+
+    # sort keys
+    sorted_grid = dict(sorted(sorted_grid.items()))
+
+    return sorted_grid
