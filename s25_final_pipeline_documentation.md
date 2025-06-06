@@ -4,31 +4,7 @@
 
 This pipeline preprocesses the Credit Card Approvals dataset, focusing on numerical features to prepare them for machine learning modeling. It applies outlier detection and treatment, followed by feature scaling. Categorical features like 'Gender', 'PriorDefault', 'Employed', and 'DriversLicense' are assumed to be already in a suitable binary (0/1) format and are not processed by this specific pipeline. Similarly, this pipeline does not perform missing value imputation, as indicated by the dataset's state at this stage.
 
-```python
-approvals_transformer = Pipeline(steps=[
-    # Gender: already categorical 0 or 1
-    # Age: numerical, so we might transform to normalize it then apply tukey for outliers
-    ('tukey_age', CustomTukeyTransformer(target_column='Age', fence='outer')),
-    ('scale_age', CustomRobustTransformer(target_column='Age')),
-    # Debt: numerical, so normalize and apply tukey
-    ('tukey_debt', CustomTukeyTransformer(target_column='Debt', fence='outer')),
-    ('scale_debt', CustomRobustTransformer(target_column='Debt')),
-    # YearsEmployed numerical
-    ('tukey_years_employed', CustomTukeyTransformer(target_column='YearsEmployed', fence='outer')),
-    ('scale_years_employed', CustomRobustTransformer(target_column='YearsEmployed')),
-    # PriorDefault is already categorical 0 or 1
-    # Employed is already categorical 0 or 1
-    # CreditScore is numerical
-    ('tukey_credit_score', CustomTukeyTransformer(target_column='CreditScore', fence='outer')),
-    ('scale_credit_score', CustomRobustTransformer(target_column='CreditScore')),
-    # DriversLicense is already categorical 0 or 1
-    # Income is numerical
-    ('tukey_income', CustomTukeyTransformer(target_column='Income', fence='outer')),
-    ('scale_income', CustomRobustTransformer(target_column='Income')),
-
-    # There are no missing values to impute
-    ], verbose=True)
-```
+![pipeline_image](https://raw.githubusercontent.com/MarvNC/cs523/refs/heads/main/s25_final_pipeline_image.png)
 
 ## Step-by-Step Design Choices
 
@@ -79,13 +55,21 @@ The pipeline processes the following numerical features: 'Age', 'Debt', 'YearsEm
   - **Design Choice:** Robust scaling.
   - **Rationale:** Robustly scales the 'Income' feature, making it more suitable for modeling, especially given its potential skewness and the presence of outliers.
 
+### 6. Imputation of Missing Values
+
+- **Transformer 6.1:** `CustomKNNTransformer(n_neighbors=5)`
+  - **Design Choice:** K-Nearest Neighbors (KNN) imputation with 5 neighbors.
+  - **Rationale:** Although the dataset is assumed to have no missing values at this stage, the pipeline includes a final imputation step as a safeguard. KNN imputation is robust and leverages the similarity between samples to estimate missing values, which can be useful if missing data is encountered in future or production data. Placing this step at the end ensures that all features have been scaled and outliers treated, making the distance calculations in KNN more meaningful and reliable.
+
 ## Pipeline Execution Order Rationale
 
 1.  **Outlier Treatment Before Scaling:** For each numerical feature, `CustomTukeyTransformer` is applied before `CustomRobustTransformer`. This order is crucial because the parameters for scaling (like median and IQR for RobustScaler) can be skewed by the presence of extreme outliers. By treating outliers first, the subsequent scaling is based on a more representative distribution of the data.
 2.  **Sequential Processing per Feature:** The pipeline processes each numerical feature with its pair of transformations (Tukey then Robust) sequentially.
+3.  **Imputation as Final Step:** The imputation step is placed at the end of the pipeline to ensure that any missing values are filled after all other transformations, using the most representative and clean version of the data.
 
 ## Performance Considerations
 
 - **Robustness to Outliers:** The choice of `CustomTukeyTransformer` (especially with `fence='outer'`) and `CustomRobustTransformer` throughout the pipeline emphasizes a strategy that is robust to outliers. This helps in creating a more stable and reliable preprocessing pipeline, particularly for datasets where outliers are common or their impact needs to be minimized.
 - **No Imputation Step:** The pipeline explicitly notes, "There are no missing values to impute." This simplifies the pipeline for this specific dataset context, assuming missing values have been handled prior or are not present in the `reduced_df` that this pipeline processes.
 - **Pre-processed Categorical Features:** Features like 'Gender', 'PriorDefault', 'Employed', and 'DriversLicense' are commented as "already categorical 0 or 1". This implies they do not require encoding within this pipeline, streamlining its focus on numerical transformations.
+- **Imputation for Future Robustness:** Including the imputation step ensures the pipeline is robust to unexpected missing values in future or production data, preventing errors and maintaining model performance.
