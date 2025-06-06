@@ -1425,3 +1425,41 @@ def sort_grid(grid):
     sorted_grid = dict(sorted(sorted_grid.items()))
 
     return sorted_grid
+
+
+approvals_transformer = Pipeline(
+    steps=[
+        # Gender: already categorical 0 or 1
+        # Age: numerical, so we might transform to normalize it then apply tukey for outliers
+        ("tukey_age", CustomTukeyTransformer(target_column="Age", fence="outer")),
+        ("scale_age", CustomRobustTransformer(target_column="Age")),
+        # Debt: numerical, so normalize and apply tukey
+        ("tukey_debt", CustomTukeyTransformer(target_column="Debt", fence="outer")),
+        ("scale_debt", CustomRobustTransformer(target_column="Debt")),
+        # YearsEmployed numerical
+        (
+            "tukey_years_employed",
+            CustomTukeyTransformer(target_column="YearsEmployed", fence="outer"),
+        ),
+        (
+            "scale_years_employed",
+            CustomRobustTransformer(target_column="YearsEmployed"),
+        ),
+        # PriorDefault is already categorical 0 or 1
+        # Employed is already categorical 0 or 1
+        # CreditScore is numerical
+        (
+            "tukey_credit_score",
+            CustomTukeyTransformer(target_column="CreditScore", fence="outer"),
+        ),
+        ("scale_credit_score", CustomRobustTransformer(target_column="CreditScore")),
+        # DriversLicense is already categorical 0 or 1
+        # Income is numerical
+        ("tukey_income", CustomTukeyTransformer(target_column="Income", fence="outer")),
+        ("scale_income", CustomRobustTransformer(target_column="Income")),
+        # There are no missing values to impute
+    ],
+    verbose=True,
+)
+
+approvals_variance_based_split = 174
