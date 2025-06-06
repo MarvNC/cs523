@@ -1457,7 +1457,8 @@ approvals_transformer = Pipeline(
         # Income is numerical
         ("tukey_income", CustomTukeyTransformer(target_column="Income", fence="outer")),
         ("scale_income", CustomRobustTransformer(target_column="Income")),
-        # There are no missing values to impute
+        # Impute missing values
+        ("impute", CustomKNNTransformer(n_neighbors=5)),
     ],
     verbose=True,
 )
