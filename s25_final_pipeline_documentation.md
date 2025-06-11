@@ -2,7 +2,7 @@
 
 ## Pipeline Overview
 
-This pipeline preprocesses the Credit Card Approvals dataset, focusing on numerical features to prepare them for machine learning modeling. It applies outlier detection and treatment, followed by feature scaling. Categorical features like 'Gender', 'PriorDefault', 'Employed', and 'DriversLicense' are assumed to be already in a suitable binary (0/1) format and are not processed by this specific pipeline. Similarly, this pipeline does not perform missing value imputation, as indicated by the dataset's state at this stage.
+This pipeline preprocesses the Credit Card Approvals dataset, focusing on numerical features to prepare them for machine learning modeling. It applies outlier detection and treatment, followed by feature scaling. Categorical features like 'Gender', 'PriorDefault', 'Employed', and 'DriversLicense' are assumed to be already in a suitable binary (0/1) format and are not processed by this specific pipeline.
 
 ![pipeline_image](https://raw.githubusercontent.com/MarvNC/cs523/refs/heads/main/s25_final_pipeline_image.png)
 
@@ -70,6 +70,5 @@ The pipeline processes the following numerical features: 'Age', 'Debt', 'YearsEm
 ## Performance Considerations
 
 - **Robustness to Outliers:** The choice of `CustomTukeyTransformer` (especially with `fence='outer'`) and `CustomRobustTransformer` throughout the pipeline emphasizes a strategy that is robust to outliers. This helps in creating a more stable and reliable preprocessing pipeline, particularly for datasets where outliers are common or their impact needs to be minimized.
-- **No Imputation Step:** The pipeline explicitly notes, "There are no missing values to impute." This simplifies the pipeline for this specific dataset context, assuming missing values have been handled prior or are not present in the `reduced_df` that this pipeline processes.
 - **Pre-processed Categorical Features:** Features like 'Gender', 'PriorDefault', 'Employed', and 'DriversLicense' are commented as "already categorical 0 or 1". This implies they do not require encoding within this pipeline, streamlining its focus on numerical transformations.
 - **Imputation for Future Robustness:** Including the imputation step ensures the pipeline is robust to unexpected missing values in future or production data, preventing errors and maintaining model performance.
